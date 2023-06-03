@@ -1,88 +1,114 @@
-;; .emacs.d/init.el
 
+;; Performance tweaking for modern machines
+(setq gc-cons-threshold 100000000)
+(setq read-process-output-max (* 1024 1024))
+(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 
-;; ===================================
-
-;; MELPA Package Support
-
-;; ===================================
-
-;; Enables basic packaging support
-
-(require 'package)
-
-;; Adds the Melpa archive to the list of available repositories
-
-(add-to-list 'package-archives
-
-             '("melpa" . "http://melpa.org/packages/") t)
-;; Initializes the package infrastructure
-
-(package-initialize)
-
-
-;; If there are no archived package contents, refresh them
-
-(when (not package-archive-contents)
-
-  (package-refresh-contents))
-
-(setq inhibit-startup-message t)
-
-;; Disable tool bar, menu bar, scroll bar.
-(tool-bar-mode -1)
+;; Hide UI
 (menu-bar-mode -1)
+(tool-bar-mode -1)
 (scroll-bar-mode -1)
 
-;; Highlight current line.
-(global-hl-line-mode t)
+;; Better default modes
+(electric-pair-mode t)
+(show-paren-mode 1)
+(setq-default indent-tabs-mode nil)
+(save-place-mode t)
+(savehist-mode t)
+(recentf-mode t)
+(global-auto-revert-mode t)
 
-(add-to-list 'load-path "~/.emacs.d/modus-themes")
+;; Better default settings
+(require 'uniquify)
+(setq uniquify-buffer-name-style 'forward
+      window-resize-pixelwise t
+      frame-resize-pixelwise t
+      load-prefer-newer t
+      backup-by-copying t
+      custom-file (expand-file-name "custom.el" user-emacs-directory))
+(add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
-(use-package ibuffer
-  :bind
-  ([remap list-buffers] . ibuffer))
+;; Refresh package archives (GNU Elpa)
+(unless package-archive-contents
+  (package-refresh-contents))
 
-(use-package lsp-mode
+;; ;; Great looking theme
+;; (use-package modus-themes
+;;   :ensure t
+;;   :init
+;;   (modus-themes-load-themes)
+;;   :config
+;;   (modus-themes-load-vivendi))
+
+;; Code completion at point
+;; (use-package company
+;;   :ensure t
+;;   :hook (after-init . global-company-mode)
+;;   :custom
+;;   (company-idle-delay 0))
+
+;; Better minibuffer completion
+(use-package vertico
+  :ensure t
+  :custom
+  (vertico-cycle t)
+  (read-buffer-completion-ignore-case t)
+  (read-file-name-completion-ignore-case t)
+  (completion-styles '(basic substring partial-completion flex))
+  :init
+  (vertico-mode))
+
+;; Save minibuffer results
+(use-package savehist
+  :init
+  (savehist-mode))
+
+;; Show lots of useful stuff in the minibuffer
+(use-package marginalia
+  :after vertico
+  :ensure t
+  :init
+  (marginalia-mode))
+
+
+(use-package eglot
+  :ensure t
+  :defer t
+  :bind (:map eglot-mode-map
+              ("C-c C-d" . eldoc)
+              ("C-c C-e" . eglot-rename)
+              ("C-c C-o" . python-sort-imports)
+              ("C-c C-f" . eglot-format-buffer))
+  :hook ((python-mode . eglot-ensure)
+         (python-mode . flyspell-prog-mode)
+         (python-mode . superword-mode)
+         (python-mode . hs-minor-mode)
+         (python-mode . (lambda () (set-fill-column 88))))
   :config
-  (setq lsp-idle-delay 0.5
-        lsp-enable-symbol-highlighting t
-        lsp-enable-snippet nil  ;; Not supported by company capf, which is the recommended company backend
-        lsp-pyls-plugins-flake8-enabled t)
-  (lsp-register-custom-settings
-   '(("pyls.plugins.pyls_mypy.enabled" t t)
-     ("pyls.plugins.pyls_mypy.live_mode" nil t)
-     ("pyls.plugins.pyls_black.enabled" t t)
-     ("pyls.plugins.pyls_isort.enabled" t t)
-
-     ;; Disable these as they're duplicated by flake8
-     ("pyls.plugins.pycodestyle.enabled" nil t)
-     ("pyls.plugins.mccabe.enabled" nil t)
-     ("pyls.plugins.pyflakes.enabled" nil t)))
-  :hook
-  ((python-mode . lsp)
-   (lsp-mode . lsp-enable-which-key-integration))
-  :bind (:map evil-normal-state-map
-              ("gh" . lsp-describe-thing-at-point)
-              :map md/leader-map
-              ("Ff" . lsp-format-buffer)
-              ("FR" . lsp-rename)))
-
-(use-package lsp-ui
-  :config (setq lsp-ui-sideline-show-hover t
-                lsp-ui-sideline-delay 0.5
-                lsp-ui-doc-delay 5
-                lsp-ui-sideline-ignore-duplicates t
-                lsp-ui-doc-position 'bottom
-                lsp-ui-doc-alignment 'frame
-                lsp-ui-doc-header nil
-                lsp-ui-doc-include-signature t
-                lsp-ui-doc-use-childframe t)
-  :commands lsp-ui-mode
-  :bind (:map evil-normal-state-map
-              ("gd" . lsp-ui-peek-find-definitions)
-              ("gr" . lsp-ui-peek-find-references)
-              :map md/leader-map
-              ("Ni" . lsp-ui-imenu)))
+  (setq-default eglot-workspace-configuration
+                '((:pylsp . (:configurationSources ["flake8"]
+                                                   :plugins (
+                                                             :pycodestyle (:enabled :json-false)
+                                                             :mccabe (:enabled :json-false)
+                                                             :pyflakes (:enabled :json-false)
+                                                             :flake8 (:enabled :json-false
+                                                                               :maxLineLength 88)
+                                                             :ruff (:enabled t
+                                                                             :lineLength 88)
+                                                             :pydocstyle (:enabled t
+                                                                                   :convention "numpy")
+                                                             :yapf (:enabled :json-false)
+                                                             :autopep8 (:enabled :json-false)
+                                                             :black (:enabled t
+                                                                              :line_length 88
 
 
+
+                                                                              :cache_config t)))))))
+
+
+(use-package lsp-pyright
+  :ensure t
+  :hook (python-mode . (lambda ()
+                         (require 'lsp-pyright)
+                         (lsp))))  ; or lsp-deferred
