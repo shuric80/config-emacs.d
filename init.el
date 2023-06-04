@@ -29,8 +29,8 @@
 (add-hook 'prog-mode-hook 'display-line-numbers-mode)
 
 ;; Refresh package archives (GNU Elpa)
-(unless package-archive-contents
-  (package-refresh-contents))
+;;(unless package-archive-contents
+;;  (package-refresh-contents))
 
 ;; ;; Great looking theme
 ;; (use-package modus-themes
@@ -122,57 +122,10 @@
 
 
 ;;GIT
-
-(use-package git-gutter
- :demand t
- :init
- (progn
-   (defun md/set-sensible-column ()
-     "Unless file is too big, either git-gutter mode (when in git dir)"
-     (interactive)
-     (when (and (< (count-lines (point-min) (point-max)) 1500)
-                (not (eq major-mode 'org-mode)))
-       (if (string= "git" (downcase (format "%s" (vc-backend
-                                                  (buffer-file-name
-                                                   (current-buffer))))))
-           (git-gutter-mode 1))))
-   (add-hook 'find-file-hook 'md/set-sensible-column))
-
-
- :config
- (progn
-   (setq git-gutter:ask-p nil  ; Don't ask for confirmation of gadd
-         git-gutter:modified-sign "~"
-         git-gutter:added-sign "+"
-         git-gutter:deleted-sign "-"
-
-         ;; This ensures the separator is always displayed
-         git-gutter:unchanged-sign " "
-         git-gutter:always-show-separator t
-
-         ;; Without this, there's no space between the git-gutter column and the code.
-         git-gutter:separator-sign " "))
- :bind (:map md/leader-map
-       ("g <RET>" . git-gutter-mode)
-       ("gk" . git-gutter:previous-hunk)
-       ("gp" . git-gutter:previous-hunk)
-       ("gj" . git-gutter:next-hunk)
-       ("gn" . git-gutter:next-hunk)
-       ("g+" . git-gutter:stage-hunk)
-       ("g-" . git-gutter:revert-hunk)))
-
 (use-package magit
  :demand t
  :config
  (progn
-   (evil-set-initial-state 'magit-blame-mode 'normal)
-   (evil-set-initial-state 'magit-revision-mode 'normal)
-   (evil-set-initial-state 'magit-diff-mode 'normal)
-   (evil-set-initial-state 'magit-status-mode 'normal)
-
-   (add-hook 'magit-diff-mode 'evil-normal-state)
-   (add-hook 'magit-status-mode 'evil-normal-state)
-
    (defun md/magit-quit ()
      (interactive)
      (magit-mode-bury-buffer)
@@ -190,17 +143,12 @@
      "[" 'magit-diff-less-context
      "]" 'magit-diff-more-context
      )
-
-   (evil-define-key 'emacs magit-log-mode-map
-     "q" 'md/magit-quit)
-
    ;;(setq magit-display-buffer-function 'magit-display-buffer-fullframe-status-v1)
    (setq magit-display-buffer-function 'display-buffer)
 
    ;; I don't know why, but by default I can't get magit-blame to adhere to my
    ;; normal-mode map below, even though Evil says I'm in normal mode. Explicitly
    ;; calling evil-normal-state fixes it.
-   (add-hook 'magit-blame-mode-hook 'evil-normal-state)
    (evil-define-key 'normal magit-blame-mode-map
      (kbd "<RET>") 'magit-show-commit
      "q" 'magit-blame-quit
@@ -210,10 +158,6 @@
      "gp" 'magit-blame-previous-chunk)
 
    (add-hook 'magit-revision-mode-hook 'evil-normal-state)
-   (evil-define-key 'normal magit-revision-mode-map
-     (kbd "<RET>") 'magit-diff-visit-file
-     "q" 'magit-mode-bury-buffer))  ;; This quits
-
  :bind (:map md/leader-map
        ("gg" . magit-status)
        ("gm" . magit-dispatch-popup)
@@ -253,4 +197,5 @@
 
 
 (use-package dockerfile-mode)
+
 
