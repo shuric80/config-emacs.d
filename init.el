@@ -1,13 +1,25 @@
-
 ;; Performance tweaking for modern machines
 (setq gc-cons-threshold 100000000)
 (setq read-process-output-max (* 1024 1024))
-(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
+
+
+(setq package-archives
+      '(("elpy" . "http://jorgenschaefer.github.io/packages/")
+        ("melpa" . "https://melpa.org/packages/")
+))
 
 ;; Hide UI
 (menu-bar-mode -1)
 (tool-bar-mode -1)
 (scroll-bar-mode -1)
+;; "Don't show splash screen"
+(setq inhibit-startup-screen t)
+(use-package gcmh
+  :ensure t
+  :demand t
+  :config
+  (gcmh-mode 1))
+
 
 ;; Better default modes
 (electric-pair-mode t)
@@ -17,58 +29,208 @@
 (savehist-mode t)
 (recentf-mode t)
 (global-auto-revert-mode t)
-
-;; Better default settings
-(require 'uniquify)
-(setq uniquify-buffer-name-style 'forward
-      window-resize-pixelwise t
-      frame-resize-pixelwise t
-      load-prefer-newer t
-      backup-by-copying t
-      custom-file (expand-file-name "custom.el" user-emacs-directory))
-(add-hook 'prog-mode-hook 'display-line-numbers-mode)
-
-;; Refresh package archives (GNU Elpa)
-;;(unless package-archive-contents
-;;  (package-refresh-contents))
-
-;; ;; Great looking theme
-;; (use-package modus-themes
-;;   :ensure t
-;;   :init
-;;   (modus-themes-load-themes)
-;;   :config
-;;   (modus-themes-load-vivendi))
-
-;; Code completion at point
-;; (use-package company
-;;   :ensure t
-;;   :hook (after-init . global-company-mode)
-;;   :custom
-;;   (company-idle-delay 0))
-
-;; Better minibuffer completion
-(use-package vertico
+(use-package system-packages
   :ensure t
   :custom
-  (vertico-cycle t)
-  (read-buffer-completion-ignore-case t)
-  (read-file-name-completion-ignore-case t)
-  (completion-styles '(basic substring partial-completion flex))
-  :init
-  (vertico-mode))
+  (system-packages-noconfirm t))
 
-;; Save minibuffer results
-(use-package savehist
-  :init
-  (savehist-mode))
+(use-package use-package-ensure-system-package :ensure t)
 
-;; Show lots of useful stuff in the minibuffer
-(use-package marginalia
-  :after vertico
+(use-package paradox
   :ensure t
-  :init
-  (marginalia-mode))
+  :defer 1
+  :config
+  (paradox-enable))
+
+(use-package frame
+  :bind
+  ("C-z" . nil)
+  :custom
+  (initial-frame-alist '((vertical-scroll-bars))))
+
+(use-package ibuffer
+  :bind
+  ([remap list-buffers] . ibuffer))
+
+(use-package help
+  :defer t
+  :bind
+  (("C-?" . help-command)
+   :map mode-specific-map
+   ("h" . help-command)))
+
+(use-package files
+  :hook
+  (before-save . delete-trailing-whitespace)
+  :custom
+  (require-final-newline t)
+  ;; backup settings
+  (backup-by-copying t)
+  (backup-directory-alist
+   `((".*" . ,(locate-user-emacs-file "backups"))))
+  (delete-old-versions t)
+  (kept-new-versions 6)
+  (kept-old-versions 2)
+  (version-control t))
+
+(use-package autorevert
+  :defer 0.1)
+
+(use-package recentf
+  :defer 0.1
+  :custom
+  (recentf-auto-cleanup 30)
+  :config
+  (recentf-mode)
+  (run-with-idle-timer 30 t 'recentf-save-list))
+
+(use-package em-smart
+  :defer t
+  :config
+  (eshell-smart-initialize)
+  :custom
+  (eshell-where-to-jump 'begin)
+  (eshell-review-quick-commands nil)
+  (eshell-smart-space-goes-to-end t))
+
+(use-package esh-help
+  :ensure t
+  :defer t
+  :config
+  (setup-esh-help-eldoc))
+
+(use-package esh-autosuggest
+  :ensure t
+  :hook (eshell-mode . esh-autosuggest-mode))
+
+(use-package esh-module
+  :defer t
+  :custom
+  (eshell-modules-list '(eshell-tramp)))
+
+(use-package eshell-prompt-extras
+  :ensure t
+  :after (eshell esh-opt)
+  :custom
+  (eshell-prompt-function #'epe-theme-dakrone))
+
+(use-package eshell-toggle
+  :ensure t
+  :after projectile
+  :custom
+  (eshell-toggle-use-projectile-root t)
+  (eshell-toggle-run-command nil)
+  :bind
+  ("M-`" . eshell-toggle))
+
+
+(use-package ls-lisp
+  :defer t
+  :custom
+  (ls-lisp-emulation 'MS-Windows)
+  (ls-lisp-ignore-case t)
+  (ls-lisp-verbosity nil))
+
+(use-package dired
+  :custom (dired-dwim-target t "guess a target directory")
+  :hook
+  (dired-mode . dired-hide-details-mode))
+
+(use-package dired-x
+  :bind
+  ([remap list-directory] . dired-jump)
+  :custom
+  ;; do not bind C-x C-j since it's used by jabber.el
+  (dired-bind-jump nil))
+
+(use-package dired-toggle
+  :ensure t
+  :defer t)
+
+(use-package dired-hide-dotfiles
+  :ensure t
+  :bind
+  (:map dired-mode-map
+        ("." . dired-hide-dotfiles-mode))
+  :hook
+  (dired-mode . dired-hide-dotfiles-mode))
+
+(use-package diredfl
+  :ensure t
+  :hook
+  (dired-mode . diredfl-mode))
+
+(use-package async
+  :ensure t
+  :defer t
+  :custom
+  (dired-async-mode 1))
+
+(use-package dired-rsync
+  :ensure t
+  :bind
+  (:map dired-mode-map
+        ("r" . dired-rsync)))
+
+(use-package dired-launch
+  :ensure t
+  :hook
+  (dired-mode . dired-launch-mode))
+
+;; (use-package dired-git-info
+;;   :ensure t
+;;   :bind
+;;   (:map dired-mode-map
+;;         (")" . dired-git-info-mode)))
+
+(use-package dired-recent
+  :ensure t
+  :bind
+  (:map
+   dired-recent-mode-map ("C-x C-d" . nil))
+  :config
+  (dired-recent-mode 1))
+
+(use-package faces
+  :custom
+  (face-font-family-alternatives
+   '(("Monospace" "courier" "fixed")
+     ("Consolas" "Monaco" "Roboto Mono" "PT Mono" "Terminus" "Monospace")
+     ("Monospace Serif" "CMU Typewriter Text" "Courier 10 Pitch" "Monospace")
+     ("Serif" "Alegreya" "CMU Serif" "Georgia" "Cambria" "Times New Roman" "DejaVu Serif" "serif")))
+  :custom-face
+  (variable-pitch ((t (:family "Serif" :height 135))))
+  (fixed-pitch ((t (:family "Monospace Serif" :height 125))))
+  (default ((t (:family "Monospace Serif" :height 125)))))
+
+(use-package font-lock
+  :defer t
+  :custom-face
+  (font-lock-comment-face ((t (:inherit font-lock-comment-face :italic t))))
+  (font-lock-doc-face ((t (:inherit font-lock-doc-face :italic t))))
+  (font-lock-string-face ((t (:inherit font-lock-string-face :italic t)))))
+
+	(use-package open-color
+  ;;:quelpa
+  ;;(open-color :repo "a13/open-color.el" :fetcher github :version original)
+)
+
+(use-package lor-oc-theme
+  :config
+  (load-theme 'lor-oc t)
+  :load-path "/home/dk/git/lor-theme"
+  ;; :quelpa
+  ;; (lor-theme :repo "a13/lor-theme" :fetcher github :version original)
+  )
+
+(use-package lsp-python-ms
+  :ensure t
+  :init (setq lsp-python-ms-auto-install-server t)
+  :hook (python-mode . (lambda ()
+                         (require 'lsp-python-ms)
+                         (lsp))))  ; or lsp-deferred
+
+
 
 
 (use-package eglot
@@ -101,9 +263,6 @@
                                                              :autopep8 (:enabled :json-false)
                                                              :black (:enabled t
                                                                               :line_length 88
-
-
-
                                                                               :cache_config t)))))))
 
 
@@ -112,90 +271,3 @@
   :hook (python-mode . (lambda ()
                          (require 'lsp-pyright)
                          (lsp))))  ; or lsp-deferred
-
-
-(use-package pyvenv
-  :demand t
-  :config
-  (setq pyvenv-workon "emacs")  ; Default venv
-  (pyvenv-tracking-mode 1))
-
-
-;;GIT
-(use-package magit
- :demand t
- :config
- (progn
-   (defun md/magit-quit ()
-     (interactive)
-     (magit-mode-bury-buffer)
-     (shackle--eyebrowse-close-slot-by-tag "git"))
-
-   (evil-define-key 'normal magit-mode-map
-     (kbd "TAB") 'magit-section-toggle
-     (kbd "<RET>") 'magit-visit-thing
-     "q" 'md/magit-quit
-     "r" 'magit-refresh
-     "n" 'magit-section-forward
-     "p" 'magit-section-backward
-     "+" 'magit-stage-file
-     "-" 'magit-unstage-file
-     "[" 'magit-diff-less-context
-     "]" 'magit-diff-more-context
-     )
-   ;;(setq magit-display-buffer-function 'magit-display-buffer-fullframe-status-v1)
-   (setq magit-display-buffer-function 'display-buffer)
-
-   ;; I don't know why, but by default I can't get magit-blame to adhere to my
-   ;; normal-mode map below, even though Evil says I'm in normal mode. Explicitly
-   ;; calling evil-normal-state fixes it.
-   (evil-define-key 'normal magit-blame-mode-map
-     (kbd "<RET>") 'magit-show-commit
-     "q" 'magit-blame-quit
-     "gj" 'magit-blame-next-chunk
-     "gn" 'magit-blame-next-chunk
-     "gk" 'magit-blame-previous-chunk
-     "gp" 'magit-blame-previous-chunk)
-
-   (add-hook 'magit-revision-mode-hook 'evil-normal-state)
- :bind (:map md/leader-map
-       ("gg" . magit-status)
-       ("gm" . magit-dispatch-popup)
-       ("gb" . magit-blame)
-       ("gl" . magit-log-head)
-
-       ;; Diff gives the full git diff output. Ediff shows ediff for a single
-       ;; file.
-       ("gd" . magit-diff-buffer-file)
-       ("gD" . magit-diff-dwim)
-       ("ge" . magit-ediff-popup)
-
-       ;; NOTE - this doesn't play nicely with mode-line:
-       ;; - https://github.com/magit/magit/blob/master/Documentation/magit.org#the-mode-line-information-isnt-always-up-to-date
-       ;; - https://github.com/syl20bnr/spacemacs/issues/2172
-       ("gC" . magit-commit-popup)
-       ("gc" . magit-checkout)))
-;;YAML
-(use-package yaml-mode :demand t)
-
-;;MARKDOWN
-(use-package markdown-mode
-  :commands (markdown-mode gfm-mode)
-  :mode (("README\\.md\\'" . gfm-mode)
-         ("\\.gfm\\'" . gfm-mode)
-         ("\\.md\\'" . markdown-mode)
-         ("\\.apib\\'" . markdown-mode)  ; Apiary
-         ("\\.markdown\\'" . markdown-mode))
-  :config (progn
-            ;; Markdown-cycle behaves like org-cycle, but by default is only
-            ;; enabled in insert mode. gfm-mode-map inherits from
-            ;; markdown-mode-map, so this will enable it in both.
-            (evil-define-key 'normal markdown-mode-map
-              (kbd "TAB") 'markdown-cycle
-              "gk" 'markdown-previous-visible-heading
-              "gj" 'markdown-next-visible-heading)))
-
-
-(use-package dockerfile-mode)
-
-
